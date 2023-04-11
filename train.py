@@ -52,9 +52,14 @@ parser.add_argument('--pt_projhead_style', default='diff', type=str,choices = ['
 parser.add_argument('--nce_temp', default=0.7, type=float)
 
 parser.add_argument('--lam0', default=0.5, type=float)
-parser.add_argument('--lam1', default=10, type=float)
-parser.add_argument('--lam2', default=1, type=float)
-parser.add_argument('--lam3', default=10, type=float)
+# parser.add_argument('--lam1', default=10, type=float)
+# parser.add_argument('--lam2', default=1, type=float)
+# parser.add_argument('--lam3', default=10, type=float)
+parser.add_argument('--lam1', default=0, type=float)
+parser.add_argument('--lam2', default=0, type=float)
+parser.add_argument('--lam3', default=25, type=float)
+parser.add_argument('--std_coeff', default=25, type=float)
+parser.add_argument('--cov_coeff', default=1, type=float)
 parser.add_argument('--final_mlp_style', default='sep', type=str,choices = ['common','sep'])
 
 

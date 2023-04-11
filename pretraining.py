@@ -10,6 +10,13 @@ from augmentations import add_noise
 import os
 import numpy as np
 
+
+def off_diagonal(x):
+    n, m = x.shape
+    assert n == m
+    return x.flatten()[:-1].view(n - 1, n + 1)[:, 1:].flatten()
+
+
 def SAINT_pretrain(model,cat_idxs,X_train,y_train,continuous_mean_std,opt,device):
     train_ds = DataSetCatCon(X_train, y_train, cat_idxs,opt.dtask, continuous_mean_std)
     trainloader = DataLoader(train_ds, batch_size=opt.batchsize, shuffle=True,num_workers=4)
@@ -60,7 +67,28 @@ def SAINT_pretrain(model,cat_idxs,X_train,y_train,continuous_mean_std,opt,device
                 targets = torch.arange(logits_per_aug1.size(0)).to(logits_per_aug1.device)
                 loss_1 = criterion1(logits_per_aug1, targets)
                 loss_2 = criterion1(logits_per_aug2, targets)
-                loss   = opt.lam0*(loss_1 + loss_2)/2
+                
+                # vicReg 
+                import torch.nn.functional as F
+                x = aug_features_1
+                y = aug_features_2
+                num_features = aug_features_1.shape[1]
+                
+                x = x - x.mean(dim=0)
+                y = y - y.mean(dim=0)
+
+                std_x = torch.sqrt(x.var(dim=0) + 0.0001)
+                std_y = torch.sqrt(y.var(dim=0) + 0.0001)
+                std_loss = torch.mean(F.relu(1 - std_x)) / 2 + torch.mean(F.relu(1 - std_y)) / 2
+
+                cov_x = (x.T @ x) / (opt.batchsize - 1)
+                cov_y = (y.T @ y) / (opt.batchsize - 1)
+                cov_loss = off_diagonal(cov_x).pow_(2).sum().div(num_features) \
+                         + off_diagonal(cov_y).pow_(2).sum().div(num_features)
+#                 print('std loss %.4f cov loss %.4f' % (std_loss, cov_loss))
+                loss = (opt.std_coeff * std_loss + opt.cov_coeff * cov_loss)                
+#                 loss   = opt.lam0*(loss_1 + loss_2)/2
+
             elif 'contrastive_sim' in opt.pt_tasks:
                 aug_features_1  = model.transformer(x_categ_enc, x_cont_enc)
                 aug_features_2 = model.transformer(x_categ_enc_2, x_cont_enc_2)
