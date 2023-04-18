@@ -12,6 +12,15 @@ def embed_data_mask(x_categ, x_cont, cat_mask, con_mask,model,vision_dset=False)
         x_cont_enc = torch.empty(n1,n2, model.dim)
         for i in range(model.num_continuous):
             x_cont_enc[:,i,:] = model.simple_MLP[i](x_cont[:,i])
+    elif model.cont_embeddings == 'pos_singleMLP':
+        # This is not implemented from authors ... 
+        raise Exception('This case should not work!')
+        #print (model.simple_MLP)
+        #print (x_cont.shape)
+        #x_cont_enc = model.simple_MLP[0](x_cont)
+    elif model.cont_embeddings == 'temporal_sol':
+        x_cont_enc = model.simple_MLP[0](x_cont)
+        print (x_cont_enc.shape)
     else:
         raise Exception('This case should not work!')    
 
@@ -77,6 +86,62 @@ def add_noise(x_categ,x_cont, noise_params = {'noise_type' : ['cutmix'],'lambda'
         x_categ_mask = torch.from_numpy(x_categ_mask).to(device)
         x_cont_mask = torch.from_numpy(x_cont_mask).to(device)
         return torch.mul(x_categ,x_categ_mask), torch.mul(x_cont,x_cont_mask)
-        
     else:
         print("yet to write this")
+
+def generate_noise(x_categ,x_cont,noise_params = {'noise_type' : ['gaussian_noise'], 'lambda': 0.1}):
+        """Generates noisy version of the samples x
+        
+        Args:
+            x (np.ndarray): Input data to add noise to
+        
+        Returns:
+            (np.ndarray): Corrupted version of input x
+            
+        """
+        device = x_categ.device
+
+        # Dimensions
+        batch_size, dim_x_categ = x_categ.shape
+        batch_size, dim_x_cont = x_cont.shape
+        
+        # Get noise type
+        noise_type = noise_params["noise_type"]
+        noise_level = noise_params["lambda"]
+
+        # Initialize corruption array
+#         x_categ_bar = torch.from_numpy(np.zeros(x_categ.shape)).to(device).type(x_categ.dtype)
+#         x_cont_bar = torch.from_numpy(np.zeros(x_cont.shape)).to(device).type(x_cont.dtype)
+        
+        x_categ_bar = np.zeros(x_categ.shape)
+        x_cont_bar = np.zeros(x_cont.shape)
+
+        
+        # Randomly (and column-wise) shuffle data
+        if "swap_noise" in noise_type:
+            dtype_x_categ = x_categ.dtype
+            dtype_x_cont = x_cont.dtype
+            x_categ = x_categ.detach().cpu().numpy()
+            x_cont = x_cont.detach().cpu().numpy()
+            for i in range(dim_x_cont):
+                idx = np.random.permutation(batch_size)
+                x_cont_bar[:, i] = x_cont[idx, i]
+            for j in range(dim_x_categ):
+                idx = np.random.permutation(batch_size)
+                x_categ_bar[:, j] = x_categ[idx, j]
+            x_cont_corr = x_cont * (1 - noise_level) + x_cont_bar * noise_level
+            x_categ_corr = x_categ * (1 - noise_level) + x_categ_bar * noise_level
+            x_cont_corr = torch.from_numpy(x_cont_corr).to(device).type(dtype_x_cont)
+            x_categ_corr = torch.from_numpy(x_categ_corr).to(device).type(dtype_x_categ)
+
+        # Elif, overwrite x_bar by adding Gaussian noise to x
+        elif "gaussian_noise" in noise_type:
+            x_cont_bar = torch.from_numpy(np.random.normal(0, noise_level, x_cont.shape)).to(device)
+            x_cont_corr = torch.add(x_cont, x_cont_bar.type(x_cont.dtype))
+            x_categ_corr = x_categ
+        else:
+            x_categ_corr = x_categ
+            x_cont_corr = x_cont
+        
+        
+        return x_categ_corr,x_cont_corr

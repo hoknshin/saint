@@ -1,0 +1,55 @@
+# Dataset
+dset_id: 1458 # 1597 # 1458 # 1597
+vision_dset: False 
+task: binary # binary, multiclass, regression
+
+# Model
+cont_embeddings: temporal_sol # MLP (default), Noemb, pos_singleMLP
+embedding_size: 1 # default: 32
+transformer_depth: 2
+attention_heads: 4
+attention_dropout: 0.1 
+ff_dropout: 0.1
+attentiontype: col # col, colrow, row, justmlp, attn, attnmlp
+dim_head: 4 # default: 16
+
+# training
+optimizer: AdamW # AdamW, Adam, SGD
+scheduler: cosine # cosine, linear
+
+lr: 0.0001
+epochs: 100
+batchsize: 32
+run_name: arcene_v01
+savemodelroot: ./bestmodels/${run_name}
+set_seed: 1
+dset_seed: 1
+active_log: True
+
+pretrain: True
+pretrain_epochs: 50
+pt_tasks: # contrastive, contrastive_sim, denoising
+  - contrastive
+  - denoising
+pt_aug: # mixup, cutmix
+  - cutmix 
+pt_aug_lam: 0.1
+mixup_lam: 0.3
+
+#train_noise_type: cutmix # NULL, missing, cutmix
+#train_noise_level: 0
+train_mask_prob: 0
+mask_prob: 0
+ssl_avail_y: 0
+pt_projhead_style: diff # diff, same, nohead
+nce_temp: 0.7
+
+lam0: 0.5
+lam1: 10
+lam2: 1
+lam3: 10
+final_mlp_style: common # common, sep
+
+# VICReg
+std_coeff: 25
+cov_coeff: 1

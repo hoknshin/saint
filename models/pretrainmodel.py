@@ -76,6 +76,10 @@ class SAINT(nn.Module):
             self.simple_MLP = nn.ModuleList([simple_MLP([1,100,self.dim]) for _ in range(1)])
             input_size = (dim * self.num_categories)  + (dim * num_continuous)
             nfeats = self.num_categories + num_continuous
+        elif self.cont_embeddings == 'temporal_sol':
+            self.simple_MLP = nn.ModuleList([nn.Linear(self.num_continuous, self.dim)])
+            input_size = (dim * self.num_categories)  + (dim * num_continuous)
+            nfeats = self.num_categories + num_continuous
         else:
             print('Continous features are not passed through attention')
             input_size = (dim * self.num_categories) + num_continuous

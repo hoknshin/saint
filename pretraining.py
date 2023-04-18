@@ -5,11 +5,11 @@ from data_openml import data_prep_openml,task_dset_ids,DataSetCatCon
 from torch.utils.data import DataLoader
 import torch.optim as optim
 from augmentations import embed_data_mask
-from augmentations import add_noise
+from augmentations import add_noise, generate_noise
 
 import os
 import numpy as np
-
+from tqdm.auto import tqdm, trange
 
 def off_diagonal(x):
     n, m = x.shape
@@ -18,8 +18,8 @@ def off_diagonal(x):
 
 
 def SAINT_pretrain(model,cat_idxs,X_train,y_train,continuous_mean_std,opt,device):
-    train_ds = DataSetCatCon(X_train, y_train, cat_idxs,opt.dtask, continuous_mean_std)
-    trainloader = DataLoader(train_ds, batch_size=opt.batchsize, shuffle=True,num_workers=4)
+    train_ds = DataSetCatCon(X_train, y_train, cat_idxs, opt.dtask, continuous_mean_std)
+    trainloader = DataLoader(train_ds, batch_size=opt.batchsize, shuffle=True, num_workers=32)
     vision_dset = opt.vision_dset
     optimizer = optim.AdamW(model.parameters(),lr=0.0001)
     pt_aug_dict = {
@@ -29,10 +29,10 @@ def SAINT_pretrain(model,cat_idxs,X_train,y_train,continuous_mean_std,opt,device
     criterion1 = nn.CrossEntropyLoss()
     criterion2 = nn.MSELoss()
     print("Pretraining begins!")
-    for epoch in range(opt.pretrain_epochs):
+    for epoch in trange(opt.pretrain_epochs):
         model.train()
         running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
+        for i, data in enumerate(tqdm(trainloader), 0):
             optimizer.zero_grad()
             x_categ, x_cont, _ ,cat_mask, con_mask = data[0].to(device), data[1].to(device),data[2].to(device),data[3].to(device),data[4].to(device)
             
@@ -40,6 +40,9 @@ def SAINT_pretrain(model,cat_idxs,X_train,y_train,continuous_mean_std,opt,device
             if 'cutmix' in opt.pt_aug:
                 from augmentations import add_noise
                 x_categ_corr, x_cont_corr = add_noise(x_categ,x_cont, noise_params = pt_aug_dict)
+                _ , x_categ_enc_2, x_cont_enc_2 = embed_data_mask(x_categ_corr, x_cont_corr, cat_mask, con_mask,model,vision_dset)
+            elif 'gaussian_noise' or 'swap_noise' in opt.pt_aug:
+                x_categ_corr, x_cont_corr = generate_noise(x_categ, x_cont, noise_params=pt_aug_dict)
                 _ , x_categ_enc_2, x_cont_enc_2 = embed_data_mask(x_categ_corr, x_cont_corr, cat_mask, con_mask,model,vision_dset)
             else:
                 _ , x_categ_enc_2, x_cont_enc_2 = embed_data_mask(x_categ, x_cont, cat_mask, con_mask,model,vision_dset)

@@ -1,0 +1,48 @@
+# Dataset
+dset_id: 1017
+vision_dset: False 
+task: binary # binary, multiclass, regression
+
+# Model
+cont_embeddings: MLP # MLP, Noemb, pos_singleMLP
+embedding_size: 32
+transformer_depth: 6
+attention_heads: 8
+attention_dropout: 0.1 
+ff_dropout: 0.1
+attentiontype: colrow # col, colrow, row, justmlp, attn, attnmlp
+
+# training
+optimizer: AdamW # AdamW, Adam, SGD
+scheduler: cosine # cosine, linear
+lr: 0.0001
+epochs: 100
+batchsize: 256
+savemodelroot: ./bestmodels
+run_name: testrun
+set_seed: 1
+dset_seed: 1
+active_log: True
+
+pretrain: True
+pretrain_epochs: 50
+pt_tasks: # contrastive, contrastive_sim, denoising
+  - contrastive
+  - denoising
+pt_aug: # mixup, cutmix
+  - cutmix 
+pt_aug_lam: 0.1
+mixup_lam: 0.3
+
+train_noise_type: cutmix # NULL, missing, cutmix
+train_noise_level: 0
+
+ssl_samples: 200
+pt_projhead_style: diff
+nce_temp: 0.7
+
+lam0: 0.5
+lam1: 10
+lam2: 1
+lam3: 10
+final_mlp_style: sep # common, sep
